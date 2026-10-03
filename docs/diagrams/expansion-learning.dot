@@ -1,0 +1,23 @@
+digraph expansion {
+	bgcolor=white fontcolor="#17334A" fontname="DejaVu Sans" fontsize=24 label="EXPANSION + PLANNER LEARNING
+The current implementation is a hybrid PPO / teacher objective" labelloc=t nodesep=0.30 outputorder=edgesfirst pad=0.4 rankdir=TB ranksep=0.48 splines=polyline
+	node [color="#B6C8D4" fillcolor="#E5F0FA" fontcolor="#17334A" fontname="DejaVu Sans" fontsize=13 margin="0.22,0.15" penwidth=1.2 shape=box style="rounded,filled"]
+	edge [arrowsize=0.75 color="#6E8495" fontcolor="#526C7D" fontname="DejaVu Sans" fontsize=10 penwidth=1.4]
+	sample [label=<<B>SAMPLE PLANNER CAPITAL ACTIONS</B><BR/><FONT POINT-SIZE="12">Raw hire count: 0-4 | raw land decision: 0 / 1</FONT>> fillcolor="#EEE8FB"]
+	floor [label=<<B>APPLY EXPANSION FLOOR</B><BR/><FONT POINT-SIZE="12">Desired daily hands: at least 2<BR/>Target 3 total regions through zero-based day 18<BR/>Force land only when cash covers next cost + 750</FONT>> fillcolor="#FFF0D2"]
+	record [label=<<B>RECORD FINAL ACTIONS + FLAGS</B><BR/><FONT POINT-SIZE="12">ppo_hire_active = final_hire == raw_hire<BR/>ppo_land_active = final_land == raw_land</FONT>> fillcolor="#EDF1F4"]
+	{
+		rank=same
+		ppo [label=<<B>UNCHANGED COMPONENT</B><BR/><FONT POINT-SIZE="12">Include sampled component in PPO log-probability<BR/>Include its entropy term</FONT>> fillcolor="#DDF3E9"]
+		teacher [label=<<B>OVERRIDDEN COMPONENT</B><BR/><FONT POINT-SIZE="12">Exclude component from PPO log-probability<BR/>Train forced target with cross-entropy</FONT>> fillcolor="#FFF0D2"]
+	}
+	loss [label=<<B>PHASE-PLANNER LOSS</B><BR/><FONT POINT-SIZE="12">Clipped PPO + 0.5 x Huber value loss<BR/>- 0.01 x entropy + 0.1 x capital teacher loss<BR/>Finite checks | log-ratio clamp | gradient clipping</FONT>> fillcolor="#DDF3E9"]
+	execute [label=<<B>BUDGETED EXECUTION</B><BR/><FONT POINT-SIZE="12">Final plan becomes market requests at hour 0<BR/>Affordability and order capacity still apply</FONT>> fillcolor="#EDF1F4"]
+	sample -> floor
+	floor -> record
+	record -> ppo [label=unchanged]
+	record -> teacher [label=overridden]
+	ppo -> loss
+	teacher -> loss
+	floor -> execute [label="action path" constraint=false style=dashed]
+}

@@ -1,0 +1,29 @@
+digraph training {
+	bgcolor=white fontcolor="#17334A" fontname="DejaVu Sans" fontsize=24 label="TRAINING PROCESS
+A staged curriculum with different update clocks" labelloc=t nodesep=0.30 outputorder=edgesfirst pad=0.4 rankdir=TB ranksep=0.48 splines=polyline
+	node [color="#B6C8D4" fillcolor="#E5F0FA" fontcolor="#17334A" fontname="DejaVu Sans" fontsize=13 margin="0.22,0.15" penwidth=1.2 shape=box style="rounded,filled"]
+	edge [arrowsize=0.75 color="#6E8495" fontcolor="#526C7D" fontname="DejaVu Sans" fontsize=10 penwidth=1.4]
+	subgraph cluster_curriculum {
+		bgcolor="#F7FAFC" color="#CBD8E1" fontsize=15 label="CURRICULUM  |  Human-readable game numbers" style=rounded
+		warm [label=<<B>GAMES 1-10</B><BR/><FONT POINT-SIZE="12">CNN + DQN worker<BR/>Heuristic daily plans</FONT>> fillcolor="#E5F0FA"]
+		phase [label=<<B>GAMES 11-30</B><BR/><FONT POINT-SIZE="12">Add phase-planner PPO<BR/>Use expert 0</FONT>> fillcolor="#DDF3E9"]
+		full [label=<<B>GAME 31 ONWARD</B><BR/><FONT POINT-SIZE="12">Copy expert 0 into other experts<BR/>Enable learned grand-planner routing</FONT>> fillcolor="#EEE8FB"]
+		warm -> phase
+		phase -> full
+	}
+	reset [label=<<B>NEW EPISODE</B><BR/><FONT POINT-SIZE="12">Reset environment, hidden states and ArenaAdapter<BR/>Opponent: starter or frozen champion</FONT>> fillcolor="#EDF1F4"]
+	daily [label=<<B>NEW DAY</B><BR/><FONT POINT-SIZE="12">Adjust economic maps and update CNN<BR/>Select phase when scheduled; build daily plan<BR/>Record forced-action flags for planner learning</FONT>> fillcolor="#DDF3E9"]
+	turn [label=<<B>EACH TURN</B><BR/><FONT POINT-SIZE="12">Encode workers; choose legal epsilon-greedy actions<BR/>Execute actions; compute shaped rewards<BR/>Append per-worker transitions to replay</FONT>> fillcolor="#E5F0FA"]
+	dqn [label=<<B>WORKER DQN UPDATES</B><BR/><FONT POINT-SIZE="12">After 1,000 replay entries: update every 4 steps<BR/>Batch 128 | target sync every 2,000 steps</FONT>> fillcolor="#EEE8FB"]
+	end [label=<<B>EPISODE-END UPDATES</B><BR/><FONT POINT-SIZE="12">Finalize strategic-value rewards + cash-margin bonus<BR/>Phase PPO + capital teacher loss<BR/>Grand-planner PPO when active</FONT>> fillcolor="#DDF3E9"]
+	periodic [label=<<B>PERIODIC OUTPUTS</B><BR/><FONT POINT-SIZE="12">Every 25 games: overwrite training checkpoint<BR/>Every 100 games: challenger evaluation<BR/>Every 200 games: reheat learner exploration</FONT>> fillcolor="#FFF0D2"]
+	full -> reset
+	reset -> daily
+	daily -> turn
+	turn -> dqn
+	dqn -> turn [label="same day" constraint=false style=dashed]
+	turn -> daily [label="next day" constraint=false style=dashed]
+	dqn -> end [label="episode complete"]
+	end -> periodic
+	periodic -> reset [label="next game" constraint=false style=dashed]
+}

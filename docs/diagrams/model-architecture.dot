@@ -1,0 +1,40 @@
+digraph model {
+	bgcolor=white fontcolor="#17334A" fontname="DejaVu Sans" fontsize=24 label="MODEL ARCHITECTURE
+Learned policies + economic heuristics + budgeted execution" labelloc=t nodesep=0.30 outputorder=edgesfirst pad=0.4 rankdir=TB ranksep=0.48 splines=polyline
+	node [color="#B6C8D4" fillcolor="#E5F0FA" fontcolor="#17334A" fontname="DejaVu Sans" fontsize=13 margin="0.22,0.15" penwidth=1.2 shape=box style="rounded,filled"]
+	edge [arrowsize=0.75 color="#6E8495" fontcolor="#526C7D" fontname="DejaVu Sans" fontsize=10 penwidth=1.4]
+	obs [label=<<B>GAME OBSERVATION</B><BR/><FONT POINT-SIZE="12">Own farm, opponent, market, town, private inventory<BR/>30 days x 24 turns | 10 x 10 board</FONT>> fillcolor="#EDF1F4"]
+	{
+		rank=same
+		cnn [label=<<B>SPATIAL CNN</B><BR/><FONT POINT-SIZE="12">17 x 10 x 10 board channels<BR/>128-d embedding + 5 crop-logit maps</FONT>> fillcolor="#E5F0FA"]
+		econ [label=<<B>ECONOMIC VALUE MAPS</B><BR/><FONT POINT-SIZE="12">Crop, time, seed and labor heuristics<BR/>ArenaAdapter: opponent supply + price trend</FONT>> fillcolor="#FFF0D2"]
+	}
+	grand [label=<<B>GRAND PLANNER</B><BR/><FONT POINT-SIZE="12">29 features | 128-wide MLP<BR/>Select one of 4 latent policy experts</FONT>> fillcolor="#EEE8FB"]
+	daily [label=<<B>PHASE-SPECIFIC GRU PLANNERS</B><BR/><FONT POINT-SIZE="12">182 features | 256-d recurrent hidden state<BR/>Hire + land + region / role / crop for 5 worker slots</FONT>> fillcolor="#DDF3E9"]
+	{
+		rank=same
+		target [label=<<B>SPATIAL TARGET SELECTION</B><BR/><FONT POINT-SIZE="12">Blend CNN logits with economic scores<BR/>Choose target coordinates for the daily plan</FONT>> fillcolor="#E5F0FA"]
+		floor [label=<<B>EXPANSION FLOOR</B><BR/><FONT POINT-SIZE="12">Target at least 2 daily hands<BR/>Early land expansion subject to cash limits</FONT>> fillcolor="#FFF0D2"]
+	}
+	{
+		rank=same
+		worker [label=<<B>SHARED WORKER TRANSFORMER</B><BR/><FONT POINT-SIZE="12">25 tile tokens + 1 context token per worker<BR/>3 layers | 4 heads | width 128<BR/>14 Q-values + legal-action mask</FONT>> fillcolor="#EEE8FB"]
+		market [label=<<B>MARKET EXECUTOR</B><BR/><FONT POINT-SIZE="12">Sell inventory; budget land, hires and seeds<BR/>Purchases at hour 0 | at most 10 orders</FONT>> fillcolor="#FFF0D2"]
+	}
+	action [label=<<B>ENVIRONMENT ACTION</B><BR/><FONT POINT-SIZE="12">farmer + hands + market<BR/>Worker decisions refresh every turn</FONT>> fillcolor="#DDF3E9"]
+	obs -> cnn
+	obs -> econ
+	econ -> grand [label="29-feature grand state"]
+	obs -> grand [label="farm / market features" style=dashed]
+	cnn -> daily [label="128-d embedding"]
+	econ -> daily [label="economic features"]
+	grand -> daily [label="expert selection" penwidth=2.2]
+	daily -> target [label="region / role / crop"]
+	daily -> floor [label="capital decisions"]
+	cnn -> target [label="crop logits" constraint=false style=dashed]
+	econ -> target [label="value maps" constraint=false style=dashed]
+	target -> worker [label="plan + hidden state + fresh tiles"]
+	floor -> market
+	worker -> action
+	market -> action
+}

@@ -1,0 +1,34 @@
+digraph champion {
+	bgcolor=white fontcolor="#17334A" fontname="DejaVu Sans" fontsize=24 label="CHAMPION LIFECYCLE
+Training state and deployment weights are different artifacts" labelloc=t nodesep=0.30 outputorder=edgesfirst pad=0.4 rankdir=TB ranksep=0.48 splines=polyline
+	node [color="#B6C8D4" fillcolor="#E5F0FA" fontcolor="#17334A" fontname="DejaVu Sans" fontsize=13 margin="0.22,0.15" penwidth=1.2 shape=box style="rounded,filled"]
+	edge [arrowsize=0.75 color="#6E8495" fontcolor="#526C7D" fontname="DejaVu Sans" fontsize=10 penwidth=1.4]
+	learner [label=<<B>ACTIVE LEARNER</B><BR/><FONT POINT-SIZE="12">CNN + phase planners + grand planner + worker<BR/>Learner keeps training after evaluations</FONT>> fillcolor="#E5F0FA"]
+	{
+		rank=same
+		resume [label=<<B>TRAINING CHECKPOINT</B><BR/><FONT POINT-SIZE="12">Every 25 games: checkpoints/latest.pt<BR/>Models + target worker + optimizers + counters<BR/>Replay buffer is not saved</FONT>> fillcolor="#EDF1F4"]
+		candidate [label=<<B>CHALLENGER SNAPSHOT</B><BR/><FONT POINT-SIZE="12">Every 100 games: challenger_temp.pt<BR/>Detached CPU copies of four model state dicts</FONT>> fillcolor="#EEE8FB"]
+	}
+	has [label=<<B>INCUMBENT CHAMPION EXISTS?</B><BR/><FONT POINT-SIZE="12">Select the corresponding validation branch</FONT>> fillcolor="#EDF1F4"]
+	{
+		rank=same
+		initial [label=<<B>NO: STARTER HEALTH CHECK</B><BR/><FONT POINT-SIZE="12">4 games with alternating seats<BR/>No errors; mean candidate cash at least 100</FONT>> fillcolor="#FFF0D2"]
+		versus [label=<<B>YES: HEAD-TO-HEAD EVALUATION</B><BR/><FONT POINT-SIZE="12">8 games with alternating seats<BR/>Win rate at least 0.58 + positive mean margin<BR/>Mean candidate cash at least 100; no errors</FONT>> fillcolor="#FFF0D2"]
+	}
+	champ [label=<<B>SURVIVING CHAMPION</B><BR/><FONT POINT-SIZE="12">Promote passing candidate or retain incumbent<BR/>champions/champion_latest.pt<BR/>Frozen weights; within-match adaptation stays active</FONT>> fillcolor="#DDF3E9"]
+	{
+		rank=same
+		opponent [label=<<B>NEXT TRAINING OPPONENT</B><BR/><FONT POINT-SIZE="12">Rebuild trainer against surviving champion<BR/>Use starter while no healthy champion exists</FONT>> fillcolor="#E5F0FA"]
+		export [label=<<B>SUBMISSION PREPARATION</B><BR/><FONT POINT-SIZE="12">Pair weights with matching inference-only main.py<BR/>Test full 720-turn games and both seats<BR/>Package main.py + champion_latest.pt</FONT>> fillcolor="#EEE8FB"]
+	}
+	learner -> resume
+	learner -> candidate
+	candidate -> has
+	has -> initial [label=no]
+	has -> versus [label=yes]
+	initial -> champ [label="initial candidate passes"]
+	versus -> champ [label="promotion decision"]
+	champ -> opponent
+	champ -> export
+	opponent -> learner [constraint=false style=dashed]
+}
